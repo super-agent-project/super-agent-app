@@ -22,7 +22,7 @@ load_dotenv()
 # 应用日志配置
 config_loguru()
 
-
+@logger.catch
 @cl.on_chat_start
 async def start_chat():
     """
@@ -33,7 +33,7 @@ async def start_chat():
     model_settings = await get_model_settings()
     cl.user_session.set("model_settings", model_settings)
 
-
+@logger.catch
 @cl.on_settings_update
 async def setup_agent(settings):
     """
@@ -43,7 +43,7 @@ async def setup_agent(settings):
     cl.user_session.set("model_settings", settings)
     logger.info(f"\nUpdated model settings: {settings}")
 
-
+@logger.catch
 @cl.on_message
 async def main(message: cl.Message):
     """
