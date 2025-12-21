@@ -5,6 +5,7 @@
 ## 🛠️ 准备环境
 
 ### 技术选型
+
 * 编程语言：[Python 3](https://docs.python.org/3/)
 * 项目环境和依赖管理：[uv](https://uv.doczh.com/)
 * 日志框架：[loguru](https://loguru.readthedocs.io/en/stable/overview.html)
@@ -22,29 +23,34 @@ mkdir super-agent-app && cd super-agent-app
 ```
 
 ### 安装依赖
-``` shell
+
+```shell
 # 初始化项目
 uv init
 # 创建虚拟环境（.venv）并添加依赖
-uv add loguru pytest pytest-mock langchain langchain-openai chainlit
+uv add loguru pytest pytest-mock openai chainlit
 ```
+
 **注意❗️**：以上为作者初次安装依赖，其他开发者 clone 项目后，直接在项目路径下运行 `uv sync` 即可。
 
 ### 日志策略
+
 * 日志文件路径：logs/app.log
 * 日志轮转策略：每周一午夜轮转
 * 日志保留策略：6 个月
 
-详见：[src/utils/loguru_cfg.py](src/utils/loguru_cfg.py)
+详见：[src/utils/loguru_utils.py](src/utils/loguru_utils.py)
 
 ### 初始化 Chainlit
 
 ```shell
 chainlit init
 ```
+
 **注意❗️**：作者已经执行，其他开发者无需再次执行。
 
 ### 环境变量
+
 * 作者采用[阿里云百炼平台](https://bailian.console.aliyun.com/?spm=5176.28197581.0.0.12dd29a4fpkfTO&tab=doc#/doc)提供的 LLM 模型服务。
 * 执行以下命令前请将 `sk-xxx` 替换为自己的 `API Key`。
 
@@ -62,7 +68,7 @@ EOF
 
 **相关代码**：
 
-```
+```text
 app.py  # 代码入口
   - start_chat()   # 当用户首次打开聊天时触发，获取并存储模型设置
   - setup_agent()  # 当用户更新设置时触发，更新聊天模型设置
@@ -102,6 +108,7 @@ public  # 个性化设置
 ```
 
 **启动项目**：
+
 ```shell
 # 开发模式（自动检测代码更新）
 chainlit run app.py -w
