@@ -19,18 +19,47 @@ from src.ui import get_thinking_html, get_finished_thinking_html
 client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"), base_url=os.environ.get("OPENAI_BASE_URL"))
 
 
+def get_system_prompt(model_settings: dict) -> str:
+    """
+    获取系统提示词
+    """
+    return f"""
+# Role
+{model_settings['RoleSetting']}
+
+# Background
+- This is a conversation between you (the AI agent) and a human user.
+- Current System Time (Internal Reference ONLY): {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())}
+
+# Constraints
+- Do speak in Chinese.
+
+# Information Control
+- **DO NOT mention the Background information in your response unless the user explicitly asks for it.**
+- **Use the provided system time ONLY for calculating relative dates (e.g., if user asks about "What's the date tomorrow?").**
+- **Keep your greetings simple and natural, without reciting metadata.**
+    """
+
+
 async def chat(message: cl.Message):
     """
     主聊天入口函数
     """
     logger.info("\n\n\n==================[System] New message received. Processing...==================")
 
-    # 0. 获取历史记录与设置
+    # 获取历史记录与设置
     message_history = cl.user_session.get("message_history", [])
     model_settings = cl.user_session.get("model_settings")
     user_query = message.content
-    
     logger.info(f"\n[User] {message.content}")
+
+    # 插入或更新系统提示词
+    system_prompt = get_system_prompt(model_settings)
+    if not message_history or message_history[0]["role"] != "system":
+        message_history.insert(0, {"role": "system", "content": system_prompt})
+    else:
+        message_history[0]["content"] = system_prompt
+    message_history.append({"role": "user", "content": user_query})
 
     # 1. UI 消息容器
     final_answer = cl.Message(content="")
@@ -69,18 +98,6 @@ async def call_model(client, model_settings, message_history, user_query):
     """
     调用聊天模型接口
     """
-
-    PROMPT = f"""
-    # 角色设定
-    {model_settings['RoleSetting']}
-
-    # 用户问题
-    {user_query}
-    """
-
-    # 添加用户消息到历史记录
-    message_history.append({"role": "user", "content": PROMPT})
-
     response = await client.chat.completions.create(
         model=model_settings["Model"],
         messages=message_history,
