@@ -17,6 +17,7 @@ from loguru import logger
 # 引入基础设施层
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from src.utils.mcp_client import mcp_client_instance
+from src.utils.cmd_utils import parse_help_cmd, parse_resource_cmd, parse_prompts_cmd, parse_prompt_cmd
 
 # 初始化 Client
 client = AsyncOpenAI()
@@ -29,90 +30,26 @@ async def react(message: cl.Message):
     logger.info(f"\n[User] {message.content}")
     user_input = message.content.strip()
 
-    # === 帮助命令处理 ===
-    help_content="""
-**Available Commands!**
-
-- Use `@folders` to see available topics
-- Use `@<topic>` to search papers in that topic
-- Use `/prompts` to list available prompts
-- Use `/prompt <name> <arg1=value1>` to execute a prompt"
-"""
-    if user_input.startswith("/help"):
-        await cl.Message(content=help_content).send()
+    # === 帮助命令 (/help) ===
+    if await parse_help_cmd(user_input):
         return
     
-    # === A. 资源查看 (@resource) ===
-    if user_input.startswith("@"):
-        uri_suffix = user_input[1:].strip()
-        uri = "papers://folders" if uri_suffix == "folders" else f"papers://{uri_suffix}"
-        
-        async with cl.Step(name="Fetch Resource") as step:
-            step.input = uri
-            try:
-                content = await mcp_client_instance.read_resource(uri)
-                step.output = content[:500] + "..." if len(content) > 500 else content
-            except Exception as e:
-                step.output = f"Error: {str(e)}"
-        
-        await cl.Message(content=f"📄 **Resource Content**:\n\n{content}\n").send()
+    # === 资源查看 (@resource) ===
+    if await parse_resource_cmd(user_input):
         return
 
-    # === B. 列出 Prompts (/prompts) ===
-    if user_input == "/prompts":
-        prompts = mcp_client_instance.get_available_prompts()
-        out_lines = ["📋 **Available Prompts**:"]
-        for prompt in prompts:
-            out_lines.append(f"- **{prompt['name']}**: {prompt['description']}")
-            if prompt['arguments']:
-                out_lines.append("  - Arguments:")
-                for arg in prompt['arguments']:
-                    arg_name = arg.name if hasattr(arg, 'name') else arg.get('name', '')
-                    out_lines.append(f"    - {arg_name}")
-        await cl.Message(content="\n".join(out_lines)).send()
+    # === 列出 Prompts (/prompts) ===
+    if await parse_prompts_cmd(user_input):
         return
 
-    # === C. 执行 Prompt (/prompt) ===
-    if user_input.startswith("/prompt"):
-        # try-except 用于捕获引号不匹配的情况（比如只写了一个 "）
-        try:
-            # 使用 shlex.split 来解析参数
-            parts = shlex.split(user_input)
-        except ValueError as e:
-            await cl.Message(content=f"⚠️ 参数解析错误: 引号未闭合 ({e})").send()
-            return
+    # === 执行 Prompt (/prompt) ===
+    prompt_cmd_result = await parse_prompt_cmd(user_input)
+    if prompt_cmd_result is None:
+        return
+    elif prompt_cmd_result:
+        user_input = prompt_cmd_result
 
-        if len(parts) < 2:
-            await cl.Message(content="用法: `/prompt <name> <arg1=value1> ...`").send()
-            return
-
-        prompt_name = parts[1]
-        args = {}
-
-        # <--- 3. 遍历解析后的部分
-        for arg in parts[2:]:
-            if '=' in arg:
-                k, v = arg.split('=', 1)
-                args[k] = v
-            else:
-                # 可选：处理没有等号的情况，或者直接忽略
-                pass
-
-        async with cl.Step(name="Execute Prompt") as step:
-            step.input = f"Prompt: {prompt_name}, Args: {args}"
-            try:
-                prompt_content = await mcp_client_instance.get_prompt(prompt_name, args)
-                # 兼容处理：有的 Prompt 返回对象，有的返回 list
-                final_input = str(prompt_content.messages[0].content.text) if hasattr(prompt_content, 'messages') else str(prompt_content)
-                step.output = final_input
-            except Exception as e:
-                step.output = f"Error: {e}"
-                await cl.Message(content=f"❌ Prompt Error: {e}").send()
-                return
-
-        user_input = final_input
-
-    # 2. 进入 ReAct 循环逻辑
+    # 进入 ReAct 循环逻辑
     await run_react_cycle(user_input)
     logger.info("\n==================[System] Message processing completed.]==================\n\n")
 
