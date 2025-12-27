@@ -38,7 +38,7 @@ async def react(message: cl.Message):
 - Use `/prompts` to list available prompts
 - Use `/prompt <name> <arg1=value1>` to execute a prompt"
 """
-    if user_input.startswith("@help"):
+    if user_input.startswith("/help"):
         await cl.Message(content=help_content).send()
         return
     
