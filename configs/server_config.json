@@ -1,0 +1,22 @@
+{
+    "mcpServers": {
+        "weather": {
+            "url": "http://127.0.0.1:8001/mcp"
+        },
+        "research": {
+            "url": "http://127.0.0.1:8002/mcp"
+        },
+        "fetch": {
+            "command": "uvx",
+            "args": ["-q", "mcp-server-fetch"]
+        },
+        "filesystem": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-filesystem",
+                "."
+            ]
+        }
+    }
+}
